@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+banking_assistant.db
+.env
+venv/
+__pycache__/
+.DS_Store
