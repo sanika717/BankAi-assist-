@@ -1,9 +1,7 @@
 import os
 import uuid
 from pathlib import Path
-
 from app.core.config import settings
-
 
 class SpeechService:
     def __init__(self):
@@ -12,10 +10,12 @@ class SpeechService:
 
     async def speech_to_text(self, audio_file, language_hint: str = "") -> str:
         if not settings.openai_api_key:
-            return "[Demo Mode] Customer said: I would like to open a new savings account."
-
+            return "Please connect API for live speech"
         from openai import OpenAI
-        client = OpenAI(api_key=settings.openai_api_key)
+        client = OpenAI(
+            api_key=settings.openai_api_key,
+            base_url="https://api.groq.com/openai/v1"
+        )
         audio_bytes = await audio_file.read()
         tmp_path = Path(self.temp_dir) / f"stt_{uuid.uuid4().hex}.webm"
         tmp_path.write_bytes(audio_bytes)

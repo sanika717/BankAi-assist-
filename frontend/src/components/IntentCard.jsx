@@ -4,21 +4,32 @@ const INTENT_COLORS = {
   kyc_update: "#e65100",
   card_issue: "#00695c",
   balance_query: "#1b5e20",
+  fixed_deposit_enquiry: "#2e7d32",
   general_bank_query: "#37474f",
+};
+
+const INTENT_LABELS = {
+  fixed_deposit_enquiry: "FIXED DEPOSIT",
+  account_opening: "ACCOUNT OPENING",
+  loan_enquiry: "LOAN ENQUIRY",
+  kyc_update: "KYC UPDATE",
+  fund_transfer_enquiry: "FUND TRANSFER",
+  general_bank_query: "GENERAL BANK QUERY",
 };
 
 export default function IntentCard({ intentResult }) {
   if (!intentResult) return null;
-  const { intent, confidence, entities, suggested_responses, workflow_steps } = intentResult;
+  const { intent, confidence, entities, suggested_responses, workflow_steps, detected_banking_terms } = intentResult;
   const color = INTENT_COLORS[intent] || "#37474f";
   const pct = Math.round((confidence || 0) * 100);
+  const title = INTENT_LABELS[intent] || intent?.replace(/_/g, " ").toUpperCase();
 
   return (
     <div style={styles.card}>
       <div style={styles.header}>
         <div>
           <span style={{ ...styles.intentBadge, background: color }}>
-            {intent?.replace(/_/g, " ").toUpperCase()}
+            {title}
           </span>
         </div>
         <div style={styles.confWrapper}>
@@ -37,6 +48,17 @@ export default function IntentCard({ intentResult }) {
               <strong>{k}:</strong> {v}
             </span>
           ))}
+        </div>
+      )}
+
+      {detected_banking_terms && detected_banking_terms.length > 0 && (
+        <div style={styles.detectedTerms}>
+          <h4 style={styles.sectionTitle}>🏦 Detected Banking Terms</h4>
+          <div style={styles.termsList}>
+            {detected_banking_terms.map((term, i) => (
+              <span key={i} style={styles.term}>{term}</span>
+            ))}
+          </div>
         </div>
       )}
 
@@ -89,5 +111,10 @@ const styles = {
   grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 8 },
   sectionTitle: { margin: "0 0 8px", fontSize: 13, color: "#334155", fontWeight: 600 },
   list: { margin: 0, paddingLeft: 18 },
-  listItem: { fontSize: 13, color: "#475569", marginBottom: 6, lineHeight: 1.5 },
+  detectedTerms: { marginBottom: 14 },
+  termsList: { display: "flex", gap: 6, flexWrap: "wrap" },
+  term: {
+    fontSize: 12, background: "#e0f2fe", color: "#0277bd",
+    padding: "3px 8px", borderRadius: 4, fontWeight: 500,
+  },
 };

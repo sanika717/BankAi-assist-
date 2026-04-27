@@ -38,6 +38,71 @@ DEMO_INTENTS = {
             "Submit application and provide reference number",
         ],
     },
+    "fd": {
+        "intent": "fixed_deposit_enquiry",
+        "confidence": 0.96,
+        "entities": {"product_type": "fixed_deposit"},
+        "suggested_responses": [
+            "Fixed deposit tenure options are available from 7 days to 10 years.",
+            "Minimum deposit amount is required.",
+            "Interest varies by tenure.",
+        ],
+        "workflow_steps": [
+            "Verify Aadhaar",
+            "Verify PAN",
+            "Collect deposit amount",
+            "Select tenure",
+            "Generate FD receipt",
+        ],
+    },
+    "kyc": {
+        "intent": "kyc_update",
+        "confidence": 0.95,
+        "entities": {"update_type": "kyc"},
+        "suggested_responses": [
+            "KYC update is important for compliance. What documents do you have for verification?",
+            "We need to update your KYC. Please bring your Aadhaar and PAN for verification.",
+            "Let me guide you through the KYC update process to ensure your account remains active.",
+        ],
+        "workflow_steps": [
+            "Verify current KYC documents",
+            "Collect updated identification proofs",
+            "Submit for KYC verification",
+            "Confirm KYC update completion",
+        ],
+    },
+    "emi": {
+        "intent": "emi_enquiry",
+        "confidence": 0.85,
+        "entities": {"query_type": "emi_calculation"},
+        "suggested_responses": [
+            "I can help calculate your EMI. Please provide loan amount, interest rate, and tenure.",
+            "EMI depends on principal, rate, and time. Let me compute it for you.",
+            "Understanding EMI is important. Shall I explain the calculation and options?",
+        ],
+        "workflow_steps": [
+            "Capture loan details (amount, rate, tenure)",
+            "Calculate EMI and total interest",
+            "Explain payment schedule options",
+            "Provide EMI statement and payment instructions",
+        ],
+    },
+    "transfer": {
+        "intent": "fund_transfer_enquiry",
+        "confidence": 0.87,
+        "entities": {"transfer_type": "neft_rtgs"},
+        "suggested_responses": [
+            "I can assist with NEFT/RTGS transfers. What amount and beneficiary details do you have?",
+            "Fund transfers via NEFT/RTGS are secure. Let me check the limits and charges.",
+            "Please provide beneficiary account details for the transfer setup.",
+        ],
+        "workflow_steps": [
+            "Verify sender account and balance",
+            "Collect beneficiary details and transfer amount",
+            "Initiate transfer and provide reference number",
+            "Confirm transfer completion and provide receipt",
+        ],
+    },
 }
 
 FALLBACK = {
@@ -63,22 +128,46 @@ class IntentService:
         self.client = None
         if settings.openai_api_key:
             from openai import OpenAI
-            self.client = OpenAI(api_key=settings.openai_api_key)
+            self.client = OpenAI(
+                api_key=settings.openai_api_key,
+                base_url="https://api.groq.com/openai/v1",
+            )
+
+    def _keyword_intent(self, text: str) -> Optional[Dict[str, Any]]:
+        text_lower = text.lower()
+        if any(w in text_lower for w in ["fd", "fixed deposit", "deposit"]):
+            return DEMO_INTENTS["fd"]
+        if any(w in text_lower for w in ["kyc", "know your customer", "verification"]):
+            return DEMO_INTENTS["kyc"]
+        if any(w in text_lower for w in ["emi", "equated monthly installment"]):
+            return DEMO_INTENTS["emi"]
+        if any(w in text_lower for w in ["neft", "rtgs", "transfer", "fund transfer"]):
+            return DEMO_INTENTS["transfer"]
+        if any(w in text_lower for w in ["account", "open", "savings", "current account"]):
+            return DEMO_INTENTS["account"]
+        if any(w in text_lower for w in ["loan", "borrow", "credit"]):
+            return DEMO_INTENTS["loan"]
+        return None
 
     def detect(self, text: str) -> Dict[str, Any]:
+        explicit_intent = self._keyword_intent(text)
+        if explicit_intent:
+            return explicit_intent
+
         if not self.client:
-            text_lower = text.lower()
-            if any(w in text_lower for w in ["account", "open", "savings", "current"]):
-                return DEMO_INTENTS["account"]
-            if any(w in text_lower for w in ["loan", "borrow", "credit", "emi"]):
-                return DEMO_INTENTS["loan"]
             return FALLBACK
 
         system = (
             "You are a banking assistant intent classifier. "
+            "Analyze the text for banking terms and map to appropriate intents. "
             "Return JSON with keys: intent, confidence (0-1), entities, "
             "suggested_responses (list of 3), workflow_steps (list of 4). "
-            "Intents: account_opening, loan_enquiry, kyc_update, card_issue, balance_query, general_bank_query."
+            "Intents: account_opening (for savings/current accounts), loan_enquiry (for loans/credit), "
+            "fixed_deposit_enquiry (for FD/fixed deposits), kyc_update (for KYC/verification), "
+            "emi_enquiry (for EMI calculations), fund_transfer_enquiry (for NEFT/RTGS/transfers), "
+            "balance_query, card_issue, general_bank_query. "
+            "Map terms like FD/fixed deposit to fixed_deposit_enquiry, KYC to kyc_update, "
+            "EMI to emi_enquiry, NEFT/RTGS to fund_transfer_enquiry."
         )
         try:
             resp = self.client.chat.completions.create(
@@ -87,7 +176,10 @@ class IntentService:
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": text}],
                 temperature=0.2,
             )
-            return json.loads(resp.choices[0].message.content or "{}")
+            result = json.loads(resp.choices[0].message.content or "{}")
+            if result.get("intent") == "general_bank_query":
+                return FALLBACK
+            return result
         except Exception:
             return FALLBACK
 

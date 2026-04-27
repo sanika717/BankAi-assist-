@@ -14,7 +14,7 @@ export default function Navbar() {
     <header style={styles.navbar}>
       <div style={styles.brand}>
         <span style={styles.logo}>🏦</span>
-        <span style={styles.brandName}>BankAssist <span style={styles.ai}>AI</span></span>
+        <span style={styles.brandName}>Vani.<span style={styles.ai}>AI</span></span>
         <span style={styles.tagline}>Frontline Voice Assistant</span>
       </div>
       <div style={styles.right}>

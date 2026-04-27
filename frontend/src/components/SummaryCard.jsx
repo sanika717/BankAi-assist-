@@ -1,4 +1,4 @@
-export default function SummaryCard({ summary, language }) {
+export default function SummaryCard({ summary, language, requiredDocuments = [] }) {
   if (!summary) return null;
   return (
     <div style={styles.card}>
@@ -18,6 +18,67 @@ export default function SummaryCard({ summary, language }) {
           </div>
         )}
       </div>
+      <div style={styles.detailGrid}>
+        {summary.intent && (
+          <div style={styles.detailItem}>
+            <strong>Intent detected:</strong>
+            <p>{summary.intent.replace(/_/g, " ")}</p>
+          </div>
+        )}
+        {summary.eligibility_result && (
+          <div style={styles.detailItem}>
+            <strong>Eligibility result:</strong>
+            <p>{summary.eligibility_result}</p>
+          </div>
+        )}
+        {summary.next_action && (
+          <div style={styles.detailItem}>
+            <strong>Next action:</strong>
+            <p>{summary.next_action}</p>
+          </div>
+        )}
+        {summary.reference_number && (
+          <div style={styles.detailItem}>
+            <strong>Reference number:</strong>
+            <p>{summary.reference_number}</p>
+          </div>
+        )}
+      </div>
+      {summary.verified_documents?.length > 0 && (
+        <div style={styles.docsSection}>
+          <h4 style={styles.sectionTitle}>Verified Documents</h4>
+          <ul style={styles.docList}>
+            {summary.verified_documents.map((doc) => (
+              <li key={doc} style={styles.listItem}>{doc}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {summary.missing_documents?.length > 0 && (
+        <div style={styles.docsSection}>
+          <h4 style={styles.sectionTitle}>Missing Documents</h4>
+          <ul style={styles.docList}>
+            {summary.missing_documents.map((doc) => (
+              <li key={doc} style={styles.listItem}>{doc}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {requiredDocuments.length > 0 && (
+        <div style={styles.docsSection}>
+          <h4 style={styles.sectionTitle}>Required Documents</h4>
+          <ul style={styles.docList}>
+            {requiredDocuments.map(doc => (
+              <li key={doc.id} style={styles.docItem}>
+                <span>{doc.label}</span>
+                <span style={{ ...styles.docStatus, ...(doc.status === "Stored" ? styles.stored : doc.status === "Verified" ? styles.verified : styles.pending) }}>
+                  {doc.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -43,4 +104,19 @@ const styles = {
     margin: 0, fontSize: 13, color: "#1e293b",
     whiteSpace: "pre-wrap", fontFamily: "inherit", lineHeight: 1.7,
   },
+  detailGrid: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16, padding: "16px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" },
+  detailItem: { padding: "12px 14px", background: "#fff", borderRadius: 10, border: "1px solid #e2e8f0" },
+  listItem: { padding: "8px 12px", background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13, color: "#334155" },
+  docsSection: { padding: "16px 20px", borderTop: "1px solid #e2e8f0", background: "#f8fafc" },
+  docList: { listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 10 },
+  docItem: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    padding: "10px 14px", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10,
+  },
+  docStatus: {
+    fontSize: 12, fontWeight: 700, padding: "4px 10px", borderRadius: 999,
+  },
+  pending: { color: "#475569", background: "#f8fafc" },
+  verified: { color: "#0369a1", background: "#e0f2fe" },
+  stored: { color: "#166534", background: "#d1fae5" },
 };

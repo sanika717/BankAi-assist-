@@ -17,7 +17,7 @@ function ProtectedLayout({ children }) {
       <div style={styles.loadingScreen}>
         <div style={styles.loadingInner}>
           <div style={styles.loadingLogo}>🏦</div>
-          <div style={styles.loadingText}>BankAssist AI</div>
+          <div style={styles.loadingText}>Vani.AI</div>
           <div style={styles.loadingSubtext}>Loading secure session…</div>
         </div>
       </div>

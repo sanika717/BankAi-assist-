@@ -1,4 +1,4 @@
-# BankAssist AI — Multilingual Banking Voice Assistant
+# Vani.AI — Multilingual Banking Voice Assistant
 
 ## Quick Start
 

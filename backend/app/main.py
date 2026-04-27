@@ -9,6 +9,7 @@ from app.routes.translation import router as translation_router
 from app.routes.intent import router as intent_router
 from app.routes.summary import router as summary_router
 from app.routes.history import router as history_router
+from app.routes.ocr import router as ocr_router
 
 app = FastAPI(
     title="GenAI Banking Voice Assistant",
@@ -29,7 +30,7 @@ app.add_middleware(
 def on_startup():
     init_db()
     mode = "DEMO (no OpenAI key)" if settings.demo_mode else "LIVE (OpenAI connected)"
-    print(f"✅ BankAssist AI v{settings.version} started — Mode: {mode}")
+    print(f"✅ Vani.AI v{settings.version} started — Mode: {mode}")
     print(f"   CORS origins: {origins}")
 
 app.include_router(auth_router)
@@ -38,6 +39,7 @@ app.include_router(translation_router)
 app.include_router(intent_router)
 app.include_router(summary_router)
 app.include_router(history_router)
+app.include_router(ocr_router)
 
 @app.get("/health", tags=["system"])
 def health():
@@ -52,7 +54,7 @@ def health():
 @app.get("/", tags=["system"])
 def root():
     return {
-        "message": "BankAssist AI API is running.",
+        "message": "Vani.AI API is running.",
         "docs": "/docs",
         "health": "/health",
     }

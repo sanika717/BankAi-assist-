@@ -46,7 +46,7 @@ export default function Settings() {
     <div style={styles.page}>
       <div style={styles.header}>
         <h2 style={styles.title}>Settings</h2>
-        <p style={styles.subtitle}>Configure your BankAssist AI preferences</p>
+        <p style={styles.subtitle}>Configure your Vani.AI preferences</p>
       </div>
 
       <div style={styles.grid}>
@@ -104,10 +104,10 @@ export default function Settings() {
 
         <div style={styles.panel}>
           <div style={styles.panelHeader}><span style={styles.pIcon}>🏦</span><h3 style={styles.panelTitle}>System Information</h3></div>
-          <FieldRow label="Application" value="BankAssist AI" />
+          <FieldRow label="Application" value="Vani.AI" />
           <FieldRow label="Version" value="2.0.0" />
-          <FieldRow label="AI Engine" value="OpenAI GPT-4o-mini" />
-          <FieldRow label="Speech Engine" value="OpenAI Whisper" />
+          <FieldRow label="AI Engine" value="llama3-8b-8192" />
+          <FieldRow label="Speech Engine" value="whisper-large-v3" />
           <FieldRow label="Languages" value="10+ Supported" />
           <FieldRow label="Data Storage" value="Local SQLite (Branch)" />
           <div style={styles.statusRow}>

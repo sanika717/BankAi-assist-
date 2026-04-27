@@ -7,7 +7,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("bankassist_user");
+    const stored = sessionStorage.getItem("vani_user");
     if (stored) {
       try { setUser(JSON.parse(stored)); } catch {}
     }
@@ -16,12 +16,12 @@ export function AuthProvider({ children }) {
 
   function login(userData) {
     setUser(userData);
-    sessionStorage.setItem("bankassist_user", JSON.stringify(userData));
+    sessionStorage.setItem("vani_user", JSON.stringify(userData));
   }
 
   function logout() {
     setUser(null);
-    sessionStorage.removeItem("bankassist_user");
+    sessionStorage.removeItem("vani_user");
   }
 
   return (
