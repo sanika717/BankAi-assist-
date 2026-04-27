@@ -24,6 +24,12 @@ class Settings:
     whisper_model: str = os.getenv("WHISPER_MODEL", "whisper-large-v3")
     temp_audio_dir: str = os.getenv("TEMP_AUDIO_DIR", "/tmp/vani_audio")
 
+    db_name: str = os.getenv("DB_NAME", "vani")
+    db_user: str = os.getenv("DB_USER", "sanik")
+    db_password: str = os.getenv("DB_PASSWORD", "1234")
+    db_host: str = os.getenv("DB_HOST", "localhost")
+    db_port: str = os.getenv("DB_PORT", "5432")
+
     @property
     def demo_mode(self) -> bool:
         return not bool(self.openai_api_key)

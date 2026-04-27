@@ -44,26 +44,29 @@ def generate_summary(payload: SummaryRequest):
         )
         # Save interaction to DB
         conn = get_connection()
-        conn.execute("""
-            INSERT INTO interactions
-            (session_id, branch_id, staff_id, language, customer_transcript, english_transcript,
-             intent, confidence, staff_response, customer_response, summary, timestamp)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
-        """, (
-            payload.session_id,
-            payload.branch_id,
-            payload.staff_id,
-            payload.customer_language,
-            payload.customer_transcript,
-            payload.english_transcript,
-            payload.intent,
-            payload.confidence,
-            payload.staff_response,
-            payload.customer_response,
-            result.get("summary_english", ""),
-        ))
-        conn.commit()
-        conn.close()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO interactions
+                    (session_id, branch_id, staff_id, language, customer_transcript, english_transcript,
+                     intent, confidence, staff_response, customer_response, summary, timestamp)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,CURRENT_TIMESTAMP)
+                """, (
+                    payload.session_id,
+                    payload.branch_id,
+                    payload.staff_id,
+                    payload.customer_language,
+                    payload.customer_transcript,
+                    payload.english_transcript,
+                    payload.intent,
+                    payload.confidence,
+                    payload.staff_response,
+                    payload.customer_response,
+                    result.get("summary_english", ""),
+                ))
+                conn.commit()
+        finally:
+            conn.close()
         return result
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

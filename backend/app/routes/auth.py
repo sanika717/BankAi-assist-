@@ -2,7 +2,7 @@ import base64
 import hashlib
 import json
 import os
-import sqlite3
+import psycopg2
 from datetime import datetime, timedelta
 
 import jwt
@@ -63,11 +63,16 @@ def build_login_response(row):
 def login(payload: LoginRequest):
     conn = get_connection()
     pw_hash = hash_password(payload.password)
-    row = conn.execute(
-        "SELECT * FROM users WHERE username=? AND password_hash=?",
-        (payload.username, pw_hash),
-    ).fetchone()
-    conn.close()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM users WHERE username=%s AND password_hash=%s",
+                (payload.username, pw_hash),
+            )
+            row = cursor.fetchone()
+    finally:
+        conn.close()
+
     if not row:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return build_login_response(row)
@@ -77,36 +82,44 @@ def register(payload: RegisterRequest):
     conn = get_connection()
     pw_hash = hash_password(payload.password)
     try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO users (username, password_hash, full_name, branch_id, role) VALUES (?,?,?,?,?)",
-            (payload.username, pw_hash, payload.full_name, payload.branch_id, payload.role),
-        )
-        conn.commit()
-        user_id = cursor.lastrowid
-        row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
-    except sqlite3.IntegrityError:
-        conn.close()
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO users (username, password_hash, full_name, branch_id, role) VALUES (%s,%s,%s,%s,%s) RETURNING id",
+                (payload.username, pw_hash, payload.full_name, payload.branch_id, payload.role),
+            )
+            user_id = cursor.fetchone()["id"]
+            cursor.execute("SELECT * FROM users WHERE id=%s", (user_id,))
+            row = cursor.fetchone()
+            conn.commit()
+    except psycopg2.IntegrityError:
+        conn.rollback()
         raise HTTPException(status_code=400, detail="Username already exists")
-    conn.close()
+    finally:
+        conn.close()
     return build_login_response(row)
 
 @router.post("/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest):
     conn = get_connection()
-    row = conn.execute("SELECT id FROM users WHERE username=?", (payload.username,)).fetchone()
-    if not row:
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM users WHERE username=%s", (payload.username,))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="User not found")
+        
+            reset_token = base64.urlsafe_b64encode(os.urandom(24)).decode().rstrip("=")
+            expires_at = (datetime.utcnow() + timedelta(minutes=30)).isoformat()
+            cursor.execute(
+                "INSERT INTO password_reset_tokens (user_id, token, expires_at, used) VALUES (%s, %s, %s, 0)",
+                (row["id"], reset_token, expires_at),
+            )
+            conn.commit()
+    except HTTPException:
+        conn.rollback()
+        raise
+    finally:
         conn.close()
-        raise HTTPException(status_code=404, detail="User not found")
-
-    reset_token = base64.urlsafe_b64encode(os.urandom(24)).decode().rstrip("=")
-    expires_at = (datetime.utcnow() + timedelta(minutes=30)).isoformat()
-    conn.execute(
-        "INSERT INTO password_reset_tokens (user_id, token, expires_at, used) VALUES (?, ?, ?, 0)",
-        (row["id"], reset_token, expires_at),
-    )
-    conn.commit()
-    conn.close()
 
     if settings.demo_mode:
         print(f"[DEBUG] Password reset token for {payload.username}: {reset_token}")
@@ -119,25 +132,35 @@ def forgot_password(payload: ForgotPasswordRequest):
 @router.post("/reset-password")
 def reset_password(payload: ResetPasswordRequest):
     conn = get_connection()
-    row = conn.execute(
-        "SELECT prt.user_id, prt.expires_at, prt.used FROM password_reset_tokens prt "
-        "JOIN users u ON prt.user_id=u.id "
-        "WHERE u.username=? AND prt.token=? AND prt.used=0",
-        (payload.username, payload.token),
-    ).fetchone()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT prt.user_id, prt.expires_at, prt.used FROM password_reset_tokens prt "
+                "JOIN users u ON prt.user_id=u.id "
+                "WHERE u.username=%s AND prt.token=%s AND prt.used=0",
+                (payload.username, payload.token),
+            )
+            row = cursor.fetchone()
 
-    if not row:
+            if not row:
+                raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+            # Ensure row["expires_at"] is handled gracefully whether returned as datetime or string
+            expires_at_val = row["expires_at"] if isinstance(row["expires_at"], datetime) else datetime.fromisoformat(str(row["expires_at"]))
+            if expires_at_val < datetime.utcnow():
+                raise HTTPException(status_code=400, detail="Expired reset token")
+
+            pw_hash = hash_password(payload.new_password)
+            cursor.execute("UPDATE users SET password_hash=%s WHERE id=%s", (pw_hash, row["user_id"]))
+            cursor.execute("UPDATE password_reset_tokens SET used=1 WHERE token=%s", (payload.token,))
+            conn.commit()
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
         conn.close()
-        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
-
-    if datetime.fromisoformat(row["expires_at"]) < datetime.utcnow():
-        conn.close()
-        raise HTTPException(status_code=400, detail="Expired reset token")
-
-    pw_hash = hash_password(payload.new_password)
-    conn.execute("UPDATE users SET password_hash=? WHERE id=?", (pw_hash, row["user_id"]))
-    conn.execute("UPDATE password_reset_tokens SET used=1 WHERE token=?", (payload.token,))
-    conn.commit()
-    conn.close()
 
     return {"detail": "Password reset successfully."}

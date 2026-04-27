@@ -63,6 +63,7 @@ def _extract_with_pytesseract(file_path: str, document_type: str) -> Dict[str, O
 
         image = Image.open(file_path)
         text = pytesseract.image_to_string(image)
+        print(f"\n[DEBUG] Raw OCR Text Extracted:\n{text}\n")
 
         return _parse_extracted_text(text, document_type)
     except Exception as e:
@@ -77,16 +78,16 @@ def _parse_extracted_text(text: str, document_type: str) -> Dict[str, Optional[s
     fields = {}
     config = FIELD_EXTRACTION_CONFIG.get(document_type, {})
 
-    # Simple pattern matching - can be enhanced with ML
+    # More forgiving pattern matching for noisy OCR data
     patterns = {
-        "aadhaarNumber": r"(\d{4}\s\d{4}\s\d{4}|\d{12})",
-        "panNumber": r"([A-Z]{5}[0-9]{4}[A-Z]{1})",
-        "name": r"(?:name|नाम)[:\s]*([A-Za-z\s]+)(?:\n|$)",
-        "dob": r"(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})",
-        "monthlyIncome": r"(?:salary|income|ctc)[:\s]*(?:rs\.?|₹)?\s*([0-9,]+)",
-        "employer": r"(?:company|employer)[:\s]*([A-Za-z\s&]+)(?:\n|$)",
-        "accountNumber": r"(?:account|acc)[:\s]*([0-9]{8,20})",
-        "address": r"(?:address)[:\s]*([A-Za-z0-9,\s]+)(?:\n|$)",
+        "aadhaarNumber": r"\b(\d{4}\s?\d{4}\s?\d{4})\b",
+        "panNumber": r"\b([A-Z]{5}[0-9]{4}[A-Z]{1})\b",
+        "name": r"(?:name|नाम)\s*[:\-]?\s*([A-Za-z\s]{3,25})(?:\n|$)",
+        "dob": r"(?:dob|birth|DOB|Date of Birth|जन्म तिथि)\s*[:\-]?\s*([0-9]{2,4}[/\-][0-9]{1,2}[/\-][0-9]{2,4}|[0-9]{4})",
+        "monthlyIncome": r"(?:salary|income|ctc|pay)\s*[:\-]?\s*(?:rs\.?|₹|inr)?\s*([0-9,]+)",
+        "employer": r"(?:company|employer)\s*[:\-]?\s*([A-Za-z\s&]+)(?:\n|$)",
+        "accountNumber": r"(?:account|acc|a/c)\s*(?:no|number)?\s*[:\-]?\s*([0-9]{8,20})",
+        "address": r"(?:address|add|पता)\s*[:\-]?\s*([A-Za-z0-9,\s\-]+)(?:\n|$)",
     }
 
     for field in config.get("required_fields", []) + config.get("optional_fields", []):

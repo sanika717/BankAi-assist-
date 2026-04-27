@@ -221,3 +221,4 @@ banking_assistant.db
 venv/
 __pycache__/
 .DS_Store
+backend/app/google-key.json
